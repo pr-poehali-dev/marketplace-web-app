@@ -1,8 +1,21 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
+
+const AUTH_URL = "https://functions.poehali.dev/e7ad9741-494e-455d-b9c5-c63a007c9435";
+const PRODUCTS_URL = "https://functions.poehali.dev/c530fb1b-11f5-41ef-baf5-38894af16bb4";
+
+type User = {
+  id: number;
+  email: string;
+  name: string;
+  role: "buyer" | "seller";
+  shop_name?: string;
+  shop_description?: string;
+};
 
 type Product = {
   id: number;
+  seller_id?: number;
   name: string;
   price: number;
   oldPrice: number;
@@ -11,10 +24,23 @@ type Product = {
   reviews: number;
   brand: string;
   category: string;
+  description?: string;
   image: string;
   isHit: boolean;
   isNew?: boolean;
+  shop_name?: string;
 };
+
+const STATIC_PRODUCTS: Product[] = [
+  { id: -1, name: "Наушники беспроводные Sony WH-1000XM5", price: 18990, oldPrice: 29990, discount: 37, rating: 4.8, reviews: 2341, brand: "Sony", category: "Электроника", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: true },
+  { id: -2, name: "Смартфон Samsung Galaxy S24 Ultra 256GB", price: 79990, oldPrice: 99990, discount: 20, rating: 4.9, reviews: 5102, brand: "Samsung", category: "Электроника", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: true },
+  { id: -3, name: "Кофемашина Delonghi Magnifica Start", price: 32500, oldPrice: 45000, discount: 28, rating: 4.7, reviews: 890, brand: "DeLonghi", category: "Дом и сад", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: false },
+  { id: -4, name: "Пылесос Dyson V15 Detect беспроводной", price: 54990, oldPrice: 69990, discount: 21, rating: 4.9, reviews: 1234, brand: "Dyson", category: "Дом и сад", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: true },
+  { id: -5, name: "Умные часы Apple Watch Series 9", price: 39990, oldPrice: 49990, discount: 20, rating: 4.8, reviews: 3201, brand: "Apple", category: "Электроника", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: false },
+  { id: -6, name: "Сумка женская кожаная через плечо", price: 3490, oldPrice: 6990, discount: 50, rating: 4.6, reviews: 412, brand: "BagCo", category: "Одежда", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: false },
+  { id: -7, name: "Кресло компьютерное эргономичное", price: 12990, oldPrice: 17990, discount: 28, rating: 4.5, reviews: 756, brand: "IKEA", category: "Дом и сад", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: false },
+  { id: -8, name: "Стиральная машина LG 7кг инверторная", price: 28990, oldPrice: 36990, discount: 22, rating: 4.7, reviews: 2100, brand: "LG", category: "Дом и сад", image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png", isHit: true },
+];
 
 const CATEGORIES = [
   { id: 1, name: "Электроника", icon: "Smartphone", color: "bg-blue-100 text-blue-600" },
@@ -26,75 +52,6 @@ const CATEGORIES = [
   { id: 7, name: "Авто", icon: "Car", color: "bg-gray-100 text-gray-600" },
   { id: 8, name: "Книги", icon: "BookOpen", color: "bg-red-100 text-red-600" },
 ];
-
-const PRODUCTS = [
-  {
-    id: 1, name: "Наушники беспроводные Sony WH-1000XM5",
-    price: 18990, oldPrice: 29990, discount: 37,
-    rating: 4.8, reviews: 2341, brand: "Sony",
-    category: "Электроника",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: true,
-  },
-  {
-    id: 2, name: "Смартфон Samsung Galaxy S24 Ultra 256GB",
-    price: 79990, oldPrice: 99990, discount: 20,
-    rating: 4.9, reviews: 5102, brand: "Samsung",
-    category: "Электроника",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: true,
-  },
-  {
-    id: 3, name: "Кофемашина Delonghi Magnifica Start",
-    price: 32500, oldPrice: 45000, discount: 28,
-    rating: 4.7, reviews: 890, brand: "DeLonghi",
-    category: "Дом и сад",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: false,
-  },
-  {
-    id: 4, name: "Пылесос Dyson V15 Detect беспроводной",
-    price: 54990, oldPrice: 69990, discount: 21,
-    rating: 4.9, reviews: 1234, brand: "Dyson",
-    category: "Дом и сад",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: true,
-  },
-  {
-    id: 5, name: "Умные часы Apple Watch Series 9 45mm",
-    price: 39990, oldPrice: 49990, discount: 20,
-    rating: 4.8, reviews: 3201, brand: "Apple",
-    category: "Электроника",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: false,
-  },
-  {
-    id: 6, name: "Сумка женская кожаная через плечо",
-    price: 3490, oldPrice: 6990, discount: 50,
-    rating: 4.6, reviews: 412, brand: "BagCo",
-    category: "Одежда",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: false,
-  },
-  {
-    id: 7, name: "Кресло компьютерное эргономичное IKEA",
-    price: 12990, oldPrice: 17990, discount: 28,
-    rating: 4.5, reviews: 756, brand: "IKEA",
-    category: "Дом и сад",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: false,
-  },
-  {
-    id: 8, name: "Стиральная машина LG 7кг инверторная",
-    price: 28990, oldPrice: 36990, discount: 22,
-    rating: 4.7, reviews: 2100, brand: "LG",
-    category: "Дом и сад",
-    image: "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-    isHit: true,
-  },
-];
-
-const INITIAL_BRANDS = ["Apple", "Samsung", "Sony", "Dyson", "DeLonghi", "LG", "IKEA", "BagCo"];
 
 function formatPrice(n: number) {
   return n.toLocaleString("ru-RU") + " ₽";
@@ -115,57 +72,31 @@ function StarRating({ rating }: { rating: number }) {
 
 function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: (p: Product) => void }) {
   const [added, setAdded] = useState(false);
-
   function handleAdd() {
     onAddToCart(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
-
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group cursor-pointer flex flex-col">
       <div className="relative aspect-square bg-gray-50 overflow-hidden">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+        <img src={product.image || "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png"} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.discount > 0 && (
-            <span className="bg-brand-pink text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              -{product.discount}%
-            </span>
-          )}
-          {product.isHit && (
-            <span className="bg-brand-yellow text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
-              ХИТ
-            </span>
-          )}
-          {product.isNew && (
-            <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              НОВИНКА
-            </span>
-          )}
+          {product.discount > 0 && <span className="bg-brand-pink text-white text-xs font-bold px-2 py-0.5 rounded-full">-{product.discount}%</span>}
+          {product.isHit && <span className="bg-brand-yellow text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">ХИТ</span>}
+          {product.isNew && <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">НОВИНКА</span>}
         </div>
       </div>
       <div className="p-3 flex flex-col gap-2 flex-1">
         <StarRating rating={product.rating} />
         <p className="text-sm text-gray-800 font-medium line-clamp-2 leading-tight">{product.name}</p>
+        {product.shop_name && <p className="text-xs text-gray-400">{product.shop_name}</p>}
         <div className="mt-auto">
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-lg font-bold text-gray-900 font-montserrat">{formatPrice(product.price)}</span>
-            {product.oldPrice && (
-              <span className="text-sm text-gray-400 line-through">{formatPrice(product.oldPrice)}</span>
-            )}
+            {product.oldPrice > 0 && <span className="text-sm text-gray-400 line-through">{formatPrice(product.oldPrice)}</span>}
           </div>
-          <button
-            onClick={handleAdd}
-            className={`w-full py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-              added
-                ? "bg-green-500 text-white scale-95"
-                : "bg-brand-purple text-white hover:bg-brand-purple-dark active:scale-95"
-            }`}
-          >
+          <button onClick={handleAdd} className={`w-full py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${added ? "bg-green-500 text-white scale-95" : "bg-brand-purple text-white hover:bg-brand-purple-dark active:scale-95"}`}>
             {added ? "✓ Добавлено" : "В корзину"}
           </button>
         </div>
@@ -174,606 +105,601 @@ function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: 
   );
 }
 
-export default function Index() {
-  const [search, setSearch] = useState("");
-  const [products, setProducts] = useState<Product[]>(PRODUCTS);
-  const [cartItems, setCartItems] = useState<Product[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
-  const [minRating, setMinRating] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "hits" | "sale">("all");
+// ---- AUTH MODAL ----
+function AuthModal({ onClose, onAuth }: { onClose: () => void; onAuth: (u: User, sid: string) => void }) {
+  const [tab, setTab] = useState<"login" | "register">("login");
+  const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [form, setForm] = useState({ email: "", password: "", name: "", shop_name: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Seller modal
-  const [sellerOpen, setSellerOpen] = useState(false);
-  const [sellerSuccess, setSellerSuccess] = useState(false);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${AUTH_URL}?action=${tab}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Ошибка"); return; }
+      onAuth(data.user, data.session_id);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl animate-fade-in overflow-hidden">
+        <div className="bg-gradient-to-r from-brand-purple-dark to-brand-purple px-6 py-5 flex items-center justify-between">
+          <div>
+            <h2 className="font-montserrat font-black text-white text-xl">{tab === "login" ? "Вход" : "Регистрация"}</h2>
+            <p className="text-white/70 text-sm mt-0.5">Маркетплейс Продажник</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30">
+            <Icon name="X" size={18} className="text-white" />
+          </button>
+        </div>
+
+        <div className="flex border-b">
+          {(["login", "register"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`flex-1 py-3 text-sm font-semibold transition-colors ${tab === t ? "text-brand-purple border-b-2 border-brand-purple" : "text-gray-500 hover:text-gray-700"}`}>
+              {t === "login" ? "Войти" : "Создать аккаунт"}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+          {tab === "register" && (
+            <>
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ваше имя" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setRole("buyer")} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${role === "buyer" ? "border-brand-purple bg-purple-50 text-brand-purple" : "border-gray-200 text-gray-600"}`}>
+                  🛍️ Покупатель
+                </button>
+                <button type="button" onClick={() => setRole("seller")} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${role === "seller" ? "border-brand-purple bg-purple-50 text-brand-purple" : "border-gray-200 text-gray-600"}`}>
+                  🏪 Продавец
+                </button>
+              </div>
+              {role === "seller" && (
+                <input value={form.shop_name} onChange={(e) => setForm({ ...form, shop_name: e.target.value })} placeholder="Название магазина" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+              )}
+            </>
+          )}
+          <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+          <input required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Пароль (минимум 6 символов)" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+          {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-brand-purple to-brand-purple-light text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
+            {loading ? "Загрузка..." : tab === "login" ? "Войти" : "Зарегистрироваться"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---- SELLER CABINET ----
+function SellerCabinet({ user, sessionId, onClose }: { user: User; sessionId: string; onClose: () => void }) {
+  const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", price: "", brand: "", category: "Электроника", description: "" });
   const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleFileChange(file: File | null) {
+  useEffect(() => {
+    fetch(`${PRODUCTS_URL}?action=my`, { headers: { "X-Authorization": `Bearer ${sessionId}` } })
+      .then((r) => r.json())
+      .then((data) => { setMyProducts(Array.isArray(data) ? data : []); setLoading(false); });
+  }, [sessionId]);
+
+  function handleFile(file: File | null) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => setPreviewImg(e.target?.result as string);
     reader.readAsDataURL(file);
   }
 
-  function handleSubmitProduct(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name || !form.price) return;
-    const newProduct: Product = {
-      id: Date.now(),
-      name: form.name,
-      price: Number(form.price),
-      oldPrice: 0,
-      discount: 0,
-      rating: 5.0,
-      reviews: 0,
-      brand: form.brand || "Мой магазин",
-      category: form.category,
-      image: previewImg || "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
-      isHit: false,
-      isNew: true,
-    };
-    setProducts((prev) => [newProduct, ...prev]);
-    setSellerSuccess(true);
-    setTimeout(() => {
-      setSellerOpen(false);
-      setSellerSuccess(false);
-      setForm({ name: "", price: "", brand: "", category: "Электроника", description: "" });
-      setPreviewImg(null);
-    }, 2000);
+    setSubmitting(true);
+    const res = await fetch(`${PRODUCTS_URL}?action=create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${sessionId}` },
+      body: JSON.stringify({ ...form, price: Number(form.price), image_url: previewImg || "" }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setShowForm(false);
+        setForm({ name: "", price: "", brand: "", category: "Электроника", description: "" });
+        setPreviewImg(null);
+        // Обновить список
+        fetch(`${PRODUCTS_URL}?action=my`, { headers: { "X-Authorization": `Bearer ${sessionId}` } })
+          .then((r) => r.json()).then((d) => setMyProducts(Array.isArray(d) ? d : []));
+      }, 1500);
+    } else {
+      alert(data.error || "Ошибка");
+    }
+    setSubmitting(false);
   }
 
-  function addToCart(product: Product) {
-    setCartItems((prev) => [...prev, product]);
+  async function deleteProduct(id: number) {
+    if (!confirm("Удалить товар?")) return;
+    await fetch(`${PRODUCTS_URL}?action=delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${sessionId}` },
+      body: JSON.stringify({ id }),
+    });
+    setMyProducts((prev) => prev.filter((p) => p.id !== id));
   }
 
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl animate-fade-in overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-brand-purple-dark to-brand-purple px-6 py-4 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="font-montserrat font-black text-white text-lg">Кабинет продавца</h2>
+            <p className="text-white/70 text-sm">{user.shop_name || user.name}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 bg-brand-yellow text-gray-900 font-bold px-3 py-2 rounded-xl text-sm hover:bg-yellow-300 transition-colors">
+              <Icon name="Plus" size={15} /> Добавить
+            </button>
+            <button onClick={onClose} className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30">
+              <Icon name="X" size={18} className="text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="flex border-b px-6 py-3 gap-6 shrink-0">
+          <div><p className="font-montserrat font-bold text-brand-purple text-xl">{myProducts.length}</p><p className="text-gray-500 text-xs">Товаров</p></div>
+          <div><p className="font-montserrat font-bold text-brand-purple text-xl">{formatPrice(myProducts.reduce((s, p) => s + p.price, 0))}</p><p className="text-gray-500 text-xs">Суммарная стоимость</p></div>
+        </div>
+
+        {/* Products list */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-gray-400">
+              <Icon name="Loader" size={24} className="animate-spin mr-2" /> Загрузка...
+            </div>
+          ) : myProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Icon name="Package" size={40} className="mb-3 opacity-30" />
+              <p className="font-semibold">У вас пока нет товаров</p>
+              <button onClick={() => setShowForm(true)} className="mt-3 text-brand-purple text-sm font-semibold hover:underline">Добавить первый товар →</button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {myProducts.map((p) => (
+                <div key={p.id} className="flex gap-3 bg-gray-50 rounded-xl p-3 items-center">
+                  <img src={p.image || "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png"} alt={p.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.category} · {p.brand}</p>
+                    <p className="text-brand-purple font-bold text-sm mt-1">{formatPrice(p.price)}</p>
+                  </div>
+                  <button onClick={() => deleteProduct(p.id)} className="shrink-0 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <Icon name="Trash2" size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add product modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowForm(false)} />
+          <div className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl animate-fade-in overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-purple-dark to-brand-purple px-6 py-4 flex items-center justify-between">
+              <h3 className="font-montserrat font-black text-white text-lg">Новый товар</h3>
+              <button onClick={() => setShowForm(false)} className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30">
+                <Icon name="X" size={18} className="text-white" />
+              </button>
+            </div>
+            {success ? (
+              <div className="flex flex-col items-center py-12 animate-scale-in">
+                <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-3"><Icon name="CheckCircle" size={30} className="text-green-500" /></div>
+                <p className="font-montserrat font-bold text-gray-900 text-lg">Товар добавлен!</p>
+                <p className="text-gray-500 text-sm mt-1">Виден всем покупателям в каталоге</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-3 max-h-[70vh] overflow-y-auto">
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Фото товара</label>
+                  <div
+                    className={`border-2 border-dashed rounded-2xl transition-all cursor-pointer overflow-hidden ${dragOver ? "border-brand-purple bg-purple-50" : "border-gray-200 hover:border-brand-purple"}`}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); }}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {previewImg ? (
+                      <img src={previewImg} alt="preview" className="w-full h-40 object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center py-6 gap-2">
+                        <Icon name="ImagePlus" size={24} className="text-brand-purple" />
+                        <p className="text-sm font-semibold text-gray-700">Загрузить фото</p>
+                        <p className="text-xs text-gray-400">PNG, JPG — перетащите или нажмите</p>
+                      </div>
+                    )}
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
+                </div>
+                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Название товара *" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input required type="number" min="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Цена, ₽ *" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+                  <input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Бренд / магазин" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100" />
+                </div>
+                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 bg-white">
+                  {CATEGORIES.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Описание товара..." rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 resize-none" />
+                <button type="submit" disabled={submitting} className="w-full bg-gradient-to-r from-brand-purple to-brand-purple-light text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-60 shadow-lg shadow-purple-200">
+                  {submitting ? "Публикация..." : "Опубликовать товар"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- MAIN PAGE ----
+export default function Index() {
+  const [search, setSearch] = useState("");
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<Product[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
+  const [minRating, setMinRating] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "hits" | "sale">("all");
+
+  // Auth
+  const [user, setUser] = useState<User | null>(null);
+  const [sessionId, setSessionId] = useState<string>(() => localStorage.getItem("session_id") || "");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [cabinetOpen, setCabinetOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Load user on mount
+  useEffect(() => {
+    const sid = localStorage.getItem("session_id");
+    if (!sid) return;
+    fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${sid}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d.user) setUser(d.user); })
+      .catch(() => {});
+  }, []);
+
+  // Load DB products
+  const loadProducts = useCallback(() => {
+    fetch(`${PRODUCTS_URL}?action=list`)
+      .then((r) => r.json())
+      .then((d) => setDbProducts(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  function handleAuth(u: User, sid: string) {
+    setUser(u);
+    setSessionId(sid);
+    localStorage.setItem("session_id", sid);
+    setAuthOpen(false);
+    if (u.role === "seller") setCabinetOpen(true);
+  }
+
+  function handleLogout() {
+    fetch(`${AUTH_URL}?action=logout`, { method: "POST", headers: { "X-Authorization": `Bearer ${sessionId}` } });
+    setUser(null);
+    setSessionId("");
+    localStorage.removeItem("session_id");
+    setUserMenuOpen(false);
+  }
+
+  // Merge static + DB products (DB products first)
+  const allProducts = [...dbProducts, ...STATIC_PRODUCTS];
+
+  const filtered = allProducts.filter((p) => {
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = !selectedCategory || p.category === selectedCategory;
+    const matchBrand = selectedBrands.length === 0 || selectedBrands.includes(p.brand);
+    const matchPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
+    const matchRating = p.rating >= minRating;
+    const matchTab = activeTab === "all" || (activeTab === "hits" && p.isHit) || (activeTab === "sale" && p.discount >= 20);
+    return matchSearch && matchCategory && matchBrand && matchPrice && matchRating && matchTab;
+  });
+
+  const allBrands = Array.from(new Set(allProducts.map((p) => p.brand)));
+
+  function addToCart(product: Product) { setCartItems((prev) => [...prev, product]); }
   function removeFromCart(id: number) {
     setCartItems((prev) => {
       const idx = prev.findLastIndex((p) => p.id === id);
-      if (idx === -1) return prev;
-      return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      return idx === -1 ? prev : [...prev.slice(0, idx), ...prev.slice(idx + 1)];
     });
   }
 
   const cartCount = cartItems.length;
   const cartTotal = cartItems.reduce((sum, p) => sum + p.price, 0);
 
-  const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.brand.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = !selectedCategory || p.category === selectedCategory;
-    const matchBrand = selectedBrands.length === 0 || selectedBrands.includes(p.brand);
-    const matchPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
-    const matchRating = p.rating >= minRating;
-    const matchTab = activeTab === "all" || (activeTab === "hits" && p.isHit) || (activeTab === "sale" && p.discount >= 25);
-    return matchSearch && matchCategory && matchBrand && matchPrice && matchRating && matchTab;
-  });
-
-  function toggleBrand(b: string) {
-    setSelectedBrands((prev) =>
-      prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
-    );
-  }
-
-  const allBrands = Array.from(new Set([...INITIAL_BRANDS, ...products.map(p => p.brand)]));
-
   return (
     <div className="min-h-screen bg-gray-50 font-golos">
 
       {/* HEADER */}
       <header className="bg-brand-purple sticky top-0 z-40 shadow-lg">
-        <div className="max-w-7xl mx-auto px-3 py-3 flex items-center gap-3">
-          {/* Logo */}
+        <div className="max-w-7xl mx-auto px-3 py-3 flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-brand-yellow rounded-lg flex items-center justify-center">
-              <span className="text-lg">🛒</span>
-            </div>
-            <span className="text-white font-montserrat font-black text-xl hidden sm:block tracking-tight">
-              ПРОДАЖНИК
-            </span>
+            <div className="w-8 h-8 bg-brand-yellow rounded-lg flex items-center justify-center"><span className="text-lg">🛒</span></div>
+            <span className="text-white font-montserrat font-black text-xl hidden sm:block tracking-tight">ПРОДАЖНИК</span>
           </div>
 
-          {/* Search */}
           <div className="flex-1 relative">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Искать товары..."
-              className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-yellow"
-            />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Искать товары..." className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-yellow" />
             <Icon name="Search" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* Cart */}
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative shrink-0 flex items-center gap-2 bg-brand-yellow text-gray-900 font-semibold px-3 py-2.5 rounded-xl hover:bg-yellow-300 transition-colors"
-          >
+          <button onClick={() => setCartOpen(true)} className="relative shrink-0 flex items-center gap-2 bg-brand-yellow text-gray-900 font-semibold px-3 py-2.5 rounded-xl hover:bg-yellow-300 transition-colors">
             <Icon name="ShoppingCart" size={18} />
             <span className="hidden sm:block text-sm">Корзина</span>
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-brand-pink text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-scale-in">
-                {cartCount}
-              </span>
-            )}
+            {cartCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-brand-pink text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{cartCount}</span>}
           </button>
 
-          {/* Seller button */}
-          <button
-            onClick={() => setSellerOpen(true)}
-            className="shrink-0 flex items-center gap-1.5 bg-white/15 border border-white/30 text-white font-semibold px-3 py-2.5 rounded-xl hover:bg-white/25 transition-all text-sm"
-          >
-            <Icon name="PlusCircle" size={16} />
-            <span className="hidden sm:block">Добавить товар</span>
-          </button>
-
-          {/* Profile */}
-          <button className="shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
-            <Icon name="User" size={18} className="text-white" />
-          </button>
+          {user ? (
+            <div className="relative shrink-0">
+              <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 bg-white/15 border border-white/30 text-white px-3 py-2.5 rounded-xl hover:bg-white/25 transition-all">
+                <Icon name="User" size={16} />
+                <span className="hidden sm:block text-sm font-semibold max-w-20 truncate">{user.name}</span>
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 min-w-48 z-50 animate-scale-in">
+                  <div className="px-3 py-2 border-b mb-1">
+                    <p className="font-semibold text-gray-900 text-sm">{user.name}</p>
+                    <p className="text-xs text-gray-500">{user.role === "seller" ? "🏪 Продавец" : "🛍️ Покупатель"}</p>
+                  </div>
+                  {user.role === "seller" && (
+                    <button onClick={() => { setCabinetOpen(true); setUserMenuOpen(false); }} className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-brand-purple rounded-xl flex items-center gap-2">
+                      <Icon name="LayoutDashboard" size={15} /> Мой кабинет
+                    </button>
+                  )}
+                  <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl flex items-center gap-2">
+                    <Icon name="LogOut" size={15} /> Выйти
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button onClick={() => setAuthOpen(true)} className="shrink-0 flex items-center gap-1.5 bg-white/15 border border-white/30 text-white font-semibold px-3 py-2.5 rounded-xl hover:bg-white/25 transition-all text-sm">
+              <Icon name="User" size={16} />
+              <span className="hidden sm:block">Войти</span>
+            </button>
+          )}
         </div>
 
-        {/* Category nav */}
         <div className="border-t border-white/10">
           <div className="max-w-7xl mx-auto px-3 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                !selectedCategory ? "bg-white text-brand-purple" : "text-white/80 hover:text-white hover:bg-white/10"
-              }`}
-            >
+            <button onClick={() => setSelectedCategory(null)} className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${!selectedCategory ? "bg-white text-brand-purple" : "text-white/80 hover:text-white hover:bg-white/10"}`}>
               Все категории
             </button>
             {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  selectedCategory === cat.name
-                    ? "bg-white text-brand-purple"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <Icon name={cat.icon} fallback="Tag" size={13} />
-                {cat.name}
+              <button key={cat.id} onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)} className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${selectedCategory === cat.name ? "bg-white text-brand-purple" : "text-white/80 hover:text-white hover:bg-white/10"}`}>
+                <Icon name={cat.icon} fallback="Tag" size={13} />{cat.name}
               </button>
             ))}
           </div>
         </div>
       </header>
 
-      {/* HERO BANNER */}
+      {/* HERO */}
       <div className="bg-gradient-to-r from-brand-purple-dark via-brand-purple to-brand-purple-light py-8 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-6">
           <div className="text-center md:text-left">
             <p className="text-brand-yellow text-sm font-semibold uppercase tracking-widest mb-2">Маркетплейс №1</p>
-            <h1 className="font-montserrat font-black text-white text-4xl md:text-5xl leading-tight mb-3">
-              ПРОДАЖНИК
-            </h1>
+            <h1 className="font-montserrat font-black text-white text-4xl md:text-5xl leading-tight mb-3">ПРОДАЖНИК</h1>
             <p className="text-white/80 text-lg mb-5">Всё, что нужно — в одном месте!</p>
-            <div className="flex gap-3 justify-center md:justify-start">
-              <button className="bg-brand-yellow text-gray-900 font-bold px-6 py-3 rounded-xl hover:bg-yellow-300 transition-colors text-sm">
-                🛒 Все товары
-              </button>
-              <button className="bg-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/30 transition-colors text-sm">
-                Скидки дня
-              </button>
+            <div className="flex gap-3 justify-center md:justify-start flex-wrap">
+              <button onClick={() => setActiveTab("all")} className="bg-brand-yellow text-gray-900 font-bold px-6 py-3 rounded-xl hover:bg-yellow-300 transition-colors text-sm">🛒 Все товары</button>
+              {!user ? (
+                <button onClick={() => setAuthOpen(true)} className="bg-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/30 transition-colors text-sm">🏪 Стать продавцом</button>
+              ) : user.role === "seller" ? (
+                <button onClick={() => setCabinetOpen(true)} className="bg-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/30 transition-colors text-sm">🏪 Мой кабинет</button>
+              ) : null}
             </div>
           </div>
           <div className="shrink-0 md:ml-auto">
-            <img
-              src="https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png"
-              alt="Продажник"
-              className="w-56 h-56 md:w-72 md:h-72 object-cover rounded-2xl shadow-2xl"
-            />
+            <img src="https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png" alt="Продажник" className="w-56 h-56 md:w-64 md:h-64 object-cover rounded-2xl shadow-2xl" />
           </div>
         </div>
       </div>
 
-      {/* STATS BAR */}
+      {/* STATS */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-around text-center">
-          {[
-            { label: "Товаров", value: "1 200 000+" },
-            { label: "Продавцов", value: "45 000+" },
-            { label: "Доставка", value: "от 1 дня" },
-            { label: "Покупателей", value: "5 млн+" },
-          ].map((s) => (
-            <div key={s.label}>
-              <p className="font-montserrat font-bold text-brand-purple text-base md:text-lg">{s.value}</p>
-              <p className="text-gray-500 text-xs">{s.label}</p>
-            </div>
+          {[{ label: "Товаров", value: `${allProducts.length}+` }, { label: "Продавцов", value: "45 000+" }, { label: "Доставка", value: "от 1 дня" }, { label: "Покупателей", value: "5 млн+" }].map((s) => (
+            <div key={s.label}><p className="font-montserrat font-bold text-brand-purple text-base md:text-lg">{s.value}</p><p className="text-gray-500 text-xs">{s.label}</p></div>
           ))}
         </div>
       </div>
 
-      {/* CATEGORIES GRID */}
+      {/* CATEGORIES */}
       <section className="max-w-7xl mx-auto px-4 py-8">
         <h2 className="font-montserrat font-bold text-xl text-gray-900 mb-4">Категории товаров</h2>
         <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
           {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
-              className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-200 hover:scale-105 ${
-                selectedCategory === cat.name
-                  ? "ring-2 ring-brand-purple bg-purple-50"
-                  : "bg-white hover:shadow-md"
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cat.color}`}>
-                <Icon name={cat.icon} fallback="Tag" size={20} />
-              </div>
+            <button key={cat.id} onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)} className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-200 hover:scale-105 ${selectedCategory === cat.name ? "ring-2 ring-brand-purple bg-purple-50" : "bg-white hover:shadow-md"}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cat.color}`}><Icon name={cat.icon} fallback="Tag" size={20} /></div>
               <span className="text-xs font-medium text-gray-700 text-center leading-tight">{cat.name}</span>
             </button>
           ))}
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <main className="max-w-7xl mx-auto px-4 pb-12 flex gap-6">
-
-        {/* SIDEBAR — desktop */}
+        {/* SIDEBAR */}
         <aside className="hidden md:block w-56 shrink-0">
           <div className="bg-white rounded-2xl p-4 shadow-sm sticky top-32">
             <h3 className="font-montserrat font-bold text-gray-900 mb-4">Фильтры</h3>
-
-            {/* Price */}
             <div className="mb-5">
               <p className="text-sm font-semibold text-gray-700 mb-2">Цена, ₽</p>
               <div className="flex gap-2">
-                <input
-                  type="number"
-                  placeholder="От"
-                  value={priceRange[0] || ""}
-                  onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-brand-purple"
-                />
-                <input
-                  type="number"
-                  placeholder="До"
-                  value={priceRange[1] || ""}
-                  onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-brand-purple"
-                />
+                <input type="number" placeholder="От" value={priceRange[0] || ""} onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])} className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-brand-purple" />
+                <input type="number" placeholder="До" value={priceRange[1] >= 1000000 ? "" : priceRange[1]} onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 1000000])} className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-brand-purple" />
               </div>
             </div>
-
-            {/* Brands */}
             <div className="mb-5">
               <p className="text-sm font-semibold text-gray-700 mb-2">Бренд</p>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
                 {allBrands.map((b) => (
                   <label key={b} className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedBrands.includes(b)}
-                      onChange={() => toggleBrand(b)}
-                      className="accent-brand-purple w-4 h-4"
-                    />
+                    <input type="checkbox" checked={selectedBrands.includes(b)} onChange={() => setSelectedBrands((prev) => prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b])} className="accent-brand-purple w-4 h-4" />
                     <span className="text-sm text-gray-600 group-hover:text-gray-900">{b}</span>
                   </label>
                 ))}
               </div>
             </div>
-
-            {/* Rating */}
             <div className="mb-4">
               <p className="text-sm font-semibold text-gray-700 mb-2">Рейтинг от</p>
               <div className="flex flex-col gap-1">
                 {[0, 3, 4, 4.5].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setMinRating(r)}
-                    className={`text-left text-sm px-2 py-1.5 rounded-lg transition-colors ${
-                      minRating === r ? "bg-purple-100 text-brand-purple font-semibold" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
+                  <button key={r} onClick={() => setMinRating(r)} className={`text-left text-sm px-2 py-1.5 rounded-lg transition-colors ${minRating === r ? "bg-purple-100 text-brand-purple font-semibold" : "text-gray-600 hover:bg-gray-50"}`}>
                     {r === 0 ? "Любой" : `★ ${r}+`}
                   </button>
                 ))}
               </div>
             </div>
-
-            <button
-              onClick={() => { setSelectedBrands([]); setPriceRange([0, 100000]); setMinRating(0); setSelectedCategory(null); }}
-              className="w-full text-sm text-brand-purple hover:underline py-1"
-            >
+            <button onClick={() => { setSelectedBrands([]); setPriceRange([0, 1000000]); setMinRating(0); setSelectedCategory(null); }} className="w-full text-sm text-brand-purple hover:underline py-1">
               Сбросить фильтры
             </button>
           </div>
         </aside>
 
-        {/* PRODUCTS */}
         <div className="flex-1 min-w-0">
-          {/* Tabs */}
           <div className="flex items-center gap-2 mb-5 flex-wrap">
             {(["all", "hits", "sale"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  activeTab === tab
-                    ? "bg-brand-purple text-white shadow-md"
-                    : "bg-white text-gray-600 hover:bg-gray-100"
-                }`}
-              >
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === tab ? "bg-brand-purple text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-100"}`}>
                 {tab === "all" && "Все товары"}
                 {tab === "hits" && "🔥 Хиты продаж"}
                 {tab === "sale" && "🏷️ Скидки дня"}
               </button>
             ))}
-            {/* Mobile filter button */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="ml-auto md:hidden flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100"
-            >
-              <Icon name="SlidersHorizontal" size={15} />
-              Фильтры
+            <button onClick={() => setSidebarOpen(true)} className="ml-auto md:hidden flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">
+              <Icon name="SlidersHorizontal" size={15} /> Фильтры
             </button>
-            <span className="hidden md:block ml-auto text-sm text-gray-500">
-              Найдено: {filtered.length} товаров
-            </span>
+            <span className="hidden md:block ml-auto text-sm text-gray-500">Найдено: {filtered.length}</span>
           </div>
 
-          {/* Grid */}
+          {dbProducts.length > 0 && (
+            <div className="mb-3 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-sm text-green-700 flex items-center gap-2">
+              <Icon name="CheckCircle" size={16} />
+              <span>{dbProducts.length} товаров от продавцов в каталоге</span>
+            </div>
+          )}
+
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <Icon name="SearchX" size={48} className="mx-auto mb-3 opacity-40" />
               <p className="text-lg font-semibold">Товары не найдены</p>
-              <p className="text-sm">Попробуйте изменить фильтры или поисковый запрос</p>
+              <p className="text-sm">Попробуйте изменить фильтры</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
-              ))}
+              {filtered.map((product) => <ProductCard key={product.id} product={product} onAddToCart={addToCart} />)}
             </div>
           )}
         </div>
       </main>
 
-      {/* MOBILE SIDEBAR OVERLAY */}
+      {/* MOBILE SIDEBAR */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-72 bg-white p-5 overflow-y-auto animate-slide-in-right">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-montserrat font-bold text-gray-900 text-lg">Фильтры</h3>
-              <button onClick={() => setSidebarOpen(false)}>
-                <Icon name="X" size={22} className="text-gray-500" />
-              </button>
+              <button onClick={() => setSidebarOpen(false)}><Icon name="X" size={22} className="text-gray-500" /></button>
             </div>
-
             <div className="mb-5">
               <p className="text-sm font-semibold text-gray-700 mb-2">Цена, ₽</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="От" value={priceRange[0] || ""} onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-brand-purple" />
-                <input type="number" placeholder="До" value={priceRange[1] || ""} onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-brand-purple" />
+                <input type="number" placeholder="От" className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-brand-purple" onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])} />
+                <input type="number" placeholder="До" className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-brand-purple" onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 1000000])} />
               </div>
             </div>
-
             <div className="mb-5">
               <p className="text-sm font-semibold text-gray-700 mb-2">Бренд</p>
               <div className="flex flex-col gap-2">
                 {allBrands.map((b) => (
                   <label key={b} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedBrands.includes(b)} onChange={() => toggleBrand(b)} className="accent-brand-purple w-4 h-4" />
+                    <input type="checkbox" checked={selectedBrands.includes(b)} onChange={() => setSelectedBrands((prev) => prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b])} className="accent-brand-purple w-4 h-4" />
                     <span className="text-sm text-gray-700">{b}</span>
                   </label>
                 ))}
               </div>
             </div>
-
-            <div className="mb-5">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Рейтинг от</p>
-              <div className="flex flex-col gap-1">
-                {[0, 3, 4, 4.5].map((r) => (
-                  <button key={r} onClick={() => setMinRating(r)} className={`text-left text-sm px-2 py-2 rounded-lg transition-colors ${minRating === r ? "bg-purple-100 text-brand-purple font-semibold" : "text-gray-600 hover:bg-gray-50"}`}>
-                    {r === 0 ? "Любой" : `★ ${r}+`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => { setSelectedBrands([]); setPriceRange([0, 100000]); setMinRating(0); setSelectedCategory(null); setSidebarOpen(false); }}
-              className="w-full bg-brand-purple text-white font-semibold py-3 rounded-xl"
-            >
-              Применить фильтры
+            <button onClick={() => { setSelectedBrands([]); setPriceRange([0, 1000000]); setMinRating(0); setSelectedCategory(null); setSidebarOpen(false); }} className="w-full bg-brand-purple text-white font-semibold py-3 rounded-xl">
+              Применить
             </button>
           </div>
         </div>
       )}
 
-      {/* CART DRAWER */}
+      {/* CART */}
       {cartOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setCartOpen(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-white flex flex-col animate-slide-in-right">
             <div className="p-4 border-b flex items-center justify-between">
-              <div>
-                <h2 className="font-montserrat font-bold text-gray-900 text-lg">Корзина</h2>
-                <p className="text-sm text-gray-500">{cartCount} товаров</p>
-              </div>
-              <button onClick={() => setCartOpen(false)}>
-                <Icon name="X" size={22} className="text-gray-500" />
-              </button>
+              <div><h2 className="font-montserrat font-bold text-gray-900 text-lg">Корзина</h2><p className="text-sm text-gray-500">{cartCount} товаров</p></div>
+              <button onClick={() => setCartOpen(false)}><Icon name="X" size={22} className="text-gray-500" /></button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
               {cartItems.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-400 py-16">
                   <Icon name="ShoppingCart" size={48} className="mb-3 opacity-30" />
                   <p className="font-semibold">Корзина пуста</p>
-                  <p className="text-sm">Добавьте товары из каталога</p>
                 </div>
-              ) : (
-                cartItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-3 bg-gray-50 rounded-xl p-3">
-                    <img src={item.image} alt={item.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight">{item.name}</p>
-                      <p className="text-brand-purple font-bold text-sm mt-1">{formatPrice(item.price)}</p>
-                    </div>
-                    <button onClick={() => removeFromCart(item.id)} className="shrink-0 text-gray-400 hover:text-red-500 transition-colors">
-                      <Icon name="Trash2" size={16} />
-                    </button>
+              ) : cartItems.map((item, idx) => (
+                <div key={idx} className="flex gap-3 bg-gray-50 rounded-xl p-3">
+                  <img src={item.image || "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png"} alt={item.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight">{item.name}</p>
+                    <p className="text-brand-purple font-bold text-sm mt-1">{formatPrice(item.price)}</p>
                   </div>
-                ))
-              )}
+                  <button onClick={() => removeFromCart(item.id)} className="shrink-0 text-gray-400 hover:text-red-500"><Icon name="Trash2" size={16} /></button>
+                </div>
+              ))}
             </div>
-
             {cartItems.length > 0 && (
-              <div className="p-4 border-t bg-white">
+              <div className="p-4 border-t">
                 <div className="flex justify-between items-center mb-3">
                   <span className="font-semibold text-gray-900">Итого:</span>
                   <span className="font-montserrat font-black text-xl text-brand-purple">{formatPrice(cartTotal)}</span>
                 </div>
-                <button className="w-full bg-brand-purple text-white font-bold py-3.5 rounded-xl hover:bg-brand-purple-dark transition-colors text-base">
-                  Оформить заказ
-                </button>
+                <button className="w-full bg-brand-purple text-white font-bold py-3.5 rounded-xl hover:bg-brand-purple-dark transition-colors">Оформить заказ</button>
                 <p className="text-center text-xs text-gray-400 mt-2">Бесплатная доставка от 1 500 ₽</p>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* SELLER MODAL */}
-      {sellerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSellerOpen(false)} />
-          <div className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl animate-fade-in overflow-hidden">
-
-            {/* Header */}
-            <div className="bg-gradient-to-r from-brand-purple-dark to-brand-purple px-6 py-5 flex items-center justify-between">
-              <div>
-                <h2 className="font-montserrat font-black text-white text-xl">Добавить товар</h2>
-                <p className="text-white/70 text-sm mt-0.5">Ваш товар появится в общем каталоге</p>
-              </div>
-              <button onClick={() => setSellerOpen(false)} className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
-                <Icon name="X" size={18} className="text-white" />
-              </button>
-            </div>
-
-            {sellerSuccess ? (
-              <div className="flex flex-col items-center justify-center py-16 px-6 animate-scale-in">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <Icon name="CheckCircle" size={32} className="text-green-500" />
-                </div>
-                <h3 className="font-montserrat font-bold text-gray-900 text-xl mb-2">Товар добавлен!</h3>
-                <p className="text-gray-500 text-sm text-center">Ваш товар уже виден в каталоге на главной странице</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmitProduct} className="p-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
-
-                {/* Photo upload */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Фото товара</label>
-                  <div
-                    className={`border-2 border-dashed rounded-2xl transition-all cursor-pointer overflow-hidden ${dragOver ? "border-brand-purple bg-purple-50" : "border-gray-200 hover:border-brand-purple hover:bg-gray-50"}`}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFileChange(e.dataTransfer.files[0]); }}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {previewImg ? (
-                      <div className="relative">
-                        <img src={previewImg} alt="preview" className="w-full h-48 object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                          <p className="text-white text-sm font-semibold">Изменить фото</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2">
-                        <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
-                          <Icon name="ImagePlus" size={22} className="text-brand-purple" />
-                        </div>
-                        <p className="text-sm font-semibold text-gray-700">Загрузить фото</p>
-                        <p className="text-xs text-gray-400">PNG, JPG до 10 МБ или перетащите сюда</p>
-                      </div>
-                    )}
-                  </div>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)} />
-                </div>
-
-                {/* Name */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Название товара *</label>
-                  <input
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Например: Кроссовки Nike Air Max 270"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all"
-                  />
-                </div>
-
-                {/* Price + Brand row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Цена, ₽ *</label>
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      value={form.price}
-                      onChange={(e) => setForm({ ...form, price: e.target.value })}
-                      placeholder="1 990"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Бренд / магазин</label>
-                    <input
-                      value={form.brand}
-                      onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                      placeholder="Мой магазин"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Категория</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all bg-white"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Описание</label>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Опишите ваш товар: материал, размеры, особенности..."
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all resize-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-brand-purple to-brand-purple-light text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all active:scale-95 text-base shadow-lg shadow-purple-200 mt-1"
-                >
-                  Опубликовать товар
-                </button>
-              </form>
             )}
           </div>
         </div>
@@ -785,32 +711,33 @@ export default function Index() {
           <div className="flex flex-col md:flex-row gap-6 justify-between">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-brand-yellow rounded-lg flex items-center justify-center">
-                  <span className="text-lg">🛒</span>
-                </div>
+                <div className="w-8 h-8 bg-brand-yellow rounded-lg flex items-center justify-center"><span className="text-lg">🛒</span></div>
                 <span className="font-montserrat font-black text-xl">ПРОДАЖНИК</span>
               </div>
               <p className="text-white/60 text-sm max-w-xs">Ваш надёжный маркетплейс. Всё, что нужно — в одном месте!</p>
             </div>
             <div className="flex gap-8 flex-wrap">
-              {[
-                { title: "Покупателям", links: ["Как сделать заказ", "Доставка", "Возврат", "Акции"] },
-                { title: "Компания", links: ["О нас", "Контакты", "Вакансии", "Пресс-центр"] },
-              ].map((col) => (
+              {[{ title: "Покупателям", links: ["Как сделать заказ", "Доставка", "Возврат", "Акции"] }, { title: "Компания", links: ["О нас", "Контакты", "Вакансии", "Пресс-центр"] }].map((col) => (
                 <div key={col.title}>
                   <p className="font-semibold mb-2 text-sm">{col.title}</p>
-                  {col.links.map((l) => (
-                    <p key={l} className="text-white/60 text-sm hover:text-white cursor-pointer transition-colors mb-1">{l}</p>
-                  ))}
+                  {col.links.map((l) => <p key={l} className="text-white/60 text-sm hover:text-white cursor-pointer transition-colors mb-1">{l}</p>)}
                 </div>
               ))}
             </div>
           </div>
-          <div className="border-t border-white/10 mt-6 pt-4 text-center text-white/40 text-xs">
-            © 2024 Продажник. Все права защищены.
-          </div>
+          <div className="border-t border-white/10 mt-6 pt-4 text-center text-white/40 text-xs">© 2024 Продажник. Все права защищены.</div>
         </div>
       </footer>
+
+      {/* MODALS */}
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onAuth={handleAuth} />}
+      {cabinetOpen && user && sessionId && (
+        <SellerCabinet
+          user={user}
+          sessionId={sessionId}
+          onClose={() => { setCabinetOpen(false); loadProducts(); }}
+        />
+      )}
     </div>
   );
 }
