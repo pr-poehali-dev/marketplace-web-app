@@ -739,7 +739,12 @@ export default function Index() {
                   <span className="font-semibold text-gray-900">Итого:</span>
                   <span className="font-montserrat font-black text-xl text-brand-purple">{formatPrice(cartTotal)}</span>
                 </div>
-                <button className="w-full bg-brand-purple text-white font-bold py-3.5 rounded-xl hover:bg-brand-purple-dark transition-colors">Оформить заказ</button>
+                <button
+                  onClick={() => { setCartOpen(false); navigate("/checkout", { state: { cartItems, sessionId } }); }}
+                  className="w-full bg-brand-purple text-white font-bold py-3.5 rounded-xl hover:bg-brand-purple-dark transition-colors flex items-center justify-center gap-2"
+                >
+                  <Icon name="ShoppingBag" size={18} /> Оформить заказ
+                </button>
                 <p className="text-center text-xs text-gray-400 mt-2">Бесплатная доставка от 1 500 ₽</p>
               </div>
             )}

@@ -1,5 +1,6 @@
 export const AUTH_URL = "https://functions.poehali.dev/e7ad9741-494e-455d-b9c5-c63a007c9435";
 export const PRODUCTS_URL = "https://functions.poehali.dev/c530fb1b-11f5-41ef-baf5-38894af16bb4";
+export const ORDERS_URL = "https://functions.poehali.dev/88f7c440-20e5-4ce5-adbf-5b0b079d0cea";
 
 export const PLACEHOLDER_IMG = "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png";
 
