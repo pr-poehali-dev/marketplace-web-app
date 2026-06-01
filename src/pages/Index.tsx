@@ -1,5 +1,20 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
+
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  oldPrice: number;
+  discount: number;
+  rating: number;
+  reviews: number;
+  brand: string;
+  category: string;
+  image: string;
+  isHit: boolean;
+  isNew?: boolean;
+};
 
 const CATEGORIES = [
   { id: 1, name: "Электроника", icon: "Smartphone", color: "bg-blue-100 text-blue-600" },
@@ -79,7 +94,7 @@ const PRODUCTS = [
   },
 ];
 
-const BRANDS = ["Apple", "Samsung", "Sony", "Dyson", "DeLonghi", "LG", "IKEA", "BagCo"];
+const INITIAL_BRANDS = ["Apple", "Samsung", "Sony", "Dyson", "DeLonghi", "LG", "IKEA", "BagCo"];
 
 function formatPrice(n: number) {
   return n.toLocaleString("ru-RU") + " ₽";
@@ -98,7 +113,7 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ProductCard({ product, onAddToCart }: { product: typeof PRODUCTS[0]; onAddToCart: (p: typeof PRODUCTS[0]) => void }) {
+function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: (p: Product) => void }) {
   const [added, setAdded] = useState(false);
 
   function handleAdd() {
@@ -124,6 +139,11 @@ function ProductCard({ product, onAddToCart }: { product: typeof PRODUCTS[0]; on
           {product.isHit && (
             <span className="bg-brand-yellow text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
               ХИТ
+            </span>
+          )}
+          {product.isNew && (
+            <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              НОВИНКА
             </span>
           )}
         </div>
@@ -156,7 +176,8 @@ function ProductCard({ product, onAddToCart }: { product: typeof PRODUCTS[0]; on
 
 export default function Index() {
   const [search, setSearch] = useState("");
-  const [cartItems, setCartItems] = useState<typeof PRODUCTS>([]);
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [cartItems, setCartItems] = useState<Product[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
@@ -165,7 +186,49 @@ export default function Index() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "hits" | "sale">("all");
 
-  function addToCart(product: typeof PRODUCTS[0]) {
+  // Seller modal
+  const [sellerOpen, setSellerOpen] = useState(false);
+  const [sellerSuccess, setSellerSuccess] = useState(false);
+  const [form, setForm] = useState({ name: "", price: "", brand: "", category: "Электроника", description: "" });
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setPreviewImg(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleSubmitProduct(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name || !form.price) return;
+    const newProduct: Product = {
+      id: Date.now(),
+      name: form.name,
+      price: Number(form.price),
+      oldPrice: 0,
+      discount: 0,
+      rating: 5.0,
+      reviews: 0,
+      brand: form.brand || "Мой магазин",
+      category: form.category,
+      image: previewImg || "https://cdn.poehali.dev/projects/f54c580d-2345-48d5-957f-b6e7d132e7c9/bucket/34d8468a-d1d0-40a3-bded-1b33085d6c55.png",
+      isHit: false,
+      isNew: true,
+    };
+    setProducts((prev) => [newProduct, ...prev]);
+    setSellerSuccess(true);
+    setTimeout(() => {
+      setSellerOpen(false);
+      setSellerSuccess(false);
+      setForm({ name: "", price: "", brand: "", category: "Электроника", description: "" });
+      setPreviewImg(null);
+    }, 2000);
+  }
+
+  function addToCart(product: Product) {
     setCartItems((prev) => [...prev, product]);
   }
 
@@ -180,7 +243,7 @@ export default function Index() {
   const cartCount = cartItems.length;
   const cartTotal = cartItems.reduce((sum, p) => sum + p.price, 0);
 
-  const filtered = PRODUCTS.filter((p) => {
+  const filtered = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.brand.toLowerCase().includes(search.toLowerCase());
     const matchCategory = !selectedCategory || p.category === selectedCategory;
@@ -196,6 +259,8 @@ export default function Index() {
       prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
     );
   }
+
+  const allBrands = Array.from(new Set([...INITIAL_BRANDS, ...products.map(p => p.brand)]));
 
   return (
     <div className="min-h-screen bg-gray-50 font-golos">
@@ -237,6 +302,15 @@ export default function Index() {
                 {cartCount}
               </span>
             )}
+          </button>
+
+          {/* Seller button */}
+          <button
+            onClick={() => setSellerOpen(true)}
+            className="shrink-0 flex items-center gap-1.5 bg-white/15 border border-white/30 text-white font-semibold px-3 py-2.5 rounded-xl hover:bg-white/25 transition-all text-sm"
+          >
+            <Icon name="PlusCircle" size={16} />
+            <span className="hidden sm:block">Добавить товар</span>
           </button>
 
           {/* Profile */}
@@ -375,7 +449,7 @@ export default function Index() {
             <div className="mb-5">
               <p className="text-sm font-semibold text-gray-700 mb-2">Бренд</p>
               <div className="flex flex-col gap-1.5">
-                {BRANDS.map((b) => (
+                {allBrands.map((b) => (
                   <label key={b} className="flex items-center gap-2 cursor-pointer group">
                     <input
                       type="checkbox"
@@ -488,7 +562,7 @@ export default function Index() {
             <div className="mb-5">
               <p className="text-sm font-semibold text-gray-700 mb-2">Бренд</p>
               <div className="flex flex-col gap-2">
-                {BRANDS.map((b) => (
+                {allBrands.map((b) => (
                   <label key={b} className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={selectedBrands.includes(b)} onChange={() => toggleBrand(b)} className="accent-brand-purple w-4 h-4" />
                     <span className="text-sm text-gray-700">{b}</span>
@@ -567,6 +641,139 @@ export default function Index() {
                 </button>
                 <p className="text-center text-xs text-gray-400 mt-2">Бесплатная доставка от 1 500 ₽</p>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SELLER MODAL */}
+      {sellerOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSellerOpen(false)} />
+          <div className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl animate-fade-in overflow-hidden">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-brand-purple-dark to-brand-purple px-6 py-5 flex items-center justify-between">
+              <div>
+                <h2 className="font-montserrat font-black text-white text-xl">Добавить товар</h2>
+                <p className="text-white/70 text-sm mt-0.5">Ваш товар появится в общем каталоге</p>
+              </div>
+              <button onClick={() => setSellerOpen(false)} className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
+                <Icon name="X" size={18} className="text-white" />
+              </button>
+            </div>
+
+            {sellerSuccess ? (
+              <div className="flex flex-col items-center justify-center py-16 px-6 animate-scale-in">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <Icon name="CheckCircle" size={32} className="text-green-500" />
+                </div>
+                <h3 className="font-montserrat font-bold text-gray-900 text-xl mb-2">Товар добавлен!</h3>
+                <p className="text-gray-500 text-sm text-center">Ваш товар уже виден в каталоге на главной странице</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitProduct} className="p-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+
+                {/* Photo upload */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Фото товара</label>
+                  <div
+                    className={`border-2 border-dashed rounded-2xl transition-all cursor-pointer overflow-hidden ${dragOver ? "border-brand-purple bg-purple-50" : "border-gray-200 hover:border-brand-purple hover:bg-gray-50"}`}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFileChange(e.dataTransfer.files[0]); }}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {previewImg ? (
+                      <div className="relative">
+                        <img src={previewImg} alt="preview" className="w-full h-48 object-cover" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                          <p className="text-white text-sm font-semibold">Изменить фото</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2">
+                        <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+                          <Icon name="ImagePlus" size={22} className="text-brand-purple" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-700">Загрузить фото</p>
+                        <p className="text-xs text-gray-400">PNG, JPG до 10 МБ или перетащите сюда</p>
+                      </div>
+                    )}
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)} />
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Название товара *</label>
+                  <input
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Например: Кроссовки Nike Air Max 270"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all"
+                  />
+                </div>
+
+                {/* Price + Brand row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Цена, ₽ *</label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      value={form.price}
+                      onChange={(e) => setForm({ ...form, price: e.target.value })}
+                      placeholder="1 990"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Бренд / магазин</label>
+                    <input
+                      value={form.brand}
+                      onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                      placeholder="Мой магазин"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Категория</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all bg-white"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Описание</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Опишите ваш товар: материал, размеры, особенности..."
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-purple focus:ring-2 focus:ring-purple-100 transition-all resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-brand-purple to-brand-purple-light text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all active:scale-95 text-base shadow-lg shadow-purple-200 mt-1"
+                >
+                  Опубликовать товар
+                </button>
+              </form>
             )}
           </div>
         </div>
